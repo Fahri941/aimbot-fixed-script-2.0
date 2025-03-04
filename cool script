@@ -10,7 +10,8 @@ local LockedTarget = nil
 local TargetList = {}
 local CurrentTargetIndex = 1
 local LastCameraAngle = nil
-local Notifications = {}
+local LastTargetPosition = nil
+local CameraStabilityDelay = 0.1
 
 local ScreenGui = Instance.new("ScreenGui")
 local Frame = Instance.new("Frame")
@@ -35,6 +36,8 @@ AimbotToggle.Text = "Aimbot: OFF"
 AimbotToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 AimbotToggle.Font = Enum.Font.GothamBold
 AimbotToggle.TextSize = 14
+
+local Notifications = {}
 
 local function getAlivePlayers()
     local targets = {}
@@ -67,21 +70,34 @@ AimbotToggle.MouseButton1Click:Connect(function()
 end)
 
 RunService.RenderStepped:Connect(function()
-    if AimbotEnabled and #TargetList > 1 then
-        local CurrentCameraAngle = CameraWorkspace.CFrame.LookVector
-        if LastCameraAngle then
-            local dotProduct = CurrentCameraAngle:Dot(LastCameraAngle)
+    if AimbotEnabled then
+        TargetList = getAlivePlayers()
+        if #TargetList > 0 then
+            local closestTarget = nil
+            local shortestDistance = math.huge
+            
+            for _, target in pairs(TargetList) do
+                local dist = (CameraWorkspace.CFrame.Position - target.Position).Magnitude
+                if dist < shortestDistance then
+                    shortestDistance = dist
+                    closestTarget = target
+                end
+            end
 
-            if dotProduct < 0.98 then
-                CurrentTargetIndex = (CurrentTargetIndex % #TargetList) + 1
-                LockedTarget = TargetList[CurrentTargetIndex]
+            if closestTarget and closestTarget ~= LockedTarget then
+                LockedTarget = closestTarget
+            end
+
+            if LockedTarget then
+                local targetPos = LockedTarget.Position
+                local cameraPos = CameraWorkspace.CFrame.Position
+
+                if LastTargetPosition and (targetPos - LastTargetPosition).Magnitude > 0.5 then
+                    CameraWorkspace.CFrame = CFrame.new(cameraPos, targetPos)
+                end
+                LastTargetPosition = targetPos
             end
         end
-        LastCameraAngle = CurrentCameraAngle
-    end
-
-    if AimbotEnabled and LockedTarget then
-        CameraWorkspace.CFrame = CFrame.new(CameraWorkspace.CFrame.Position, LockedTarget.Position)
     end
 end)
 
@@ -130,5 +146,6 @@ local function ShowNotification(title, desc)
     Notification:Destroy()
 end
 
+ShowNotification("Tester: fake monkybacon", "Creator: M. (Olaurau2)")
 ShowNotification("I (logo) about blank.", "Hello, welcome to my script")
 ShowNotification("About Script.", "Made by M @fahriahmadsapura / discord blue app")
